@@ -26,11 +26,17 @@ export async function apiRoutes(fastify: FastifyInstance) {
     protectedRoutes.get('/cases', getCases);
     protectedRoutes.get('/cases/:id', getCaseById);
     protectedRoutes.post('/cases', createCase);
+    protectedRoutes.post('/cases/:id', updateCase);
     protectedRoutes.put('/cases/:id', updateCase);
     protectedRoutes.delete('/cases/:id', deleteCase);
     protectedRoutes.post('/cases/:id/ai-analyze', analyzeCaseAI);
+    protectedRoutes.post('/cases/sample-ai-analyze', analyzeCaseAI);
 
-    // Excel Import
+    // Excel & Generic File Upload Routes
+    protectedRoutes.post('/upload', commitExcel);
+    protectedRoutes.post('/excel/upload', commitExcel);
+    protectedRoutes.post('/cases/upload', commitExcel);
+    protectedRoutes.post('/excel/import', commitExcel);
     protectedRoutes.post('/excel/preview', previewExcel);
     protectedRoutes.post('/excel/commit', commitExcel);
 

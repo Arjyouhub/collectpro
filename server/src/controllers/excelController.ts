@@ -46,7 +46,12 @@ export async function commitExcel(request: FastifyRequest, reply: FastifyReply) 
       return reply.status(400).send({ error: 'Excel file buffer missing' });
     }
 
-    const mapping = typeof payload.mapping === 'string' ? JSON.parse(payload.mapping) : payload.mapping;
+    let mapping = payload.mapping ? (typeof payload.mapping === 'string' ? JSON.parse(payload.mapping) : payload.mapping) : null;
+    if (!mapping) {
+      const preview = ExcelService.parsePreview(fileBuffer);
+      mapping = preview.suggestedMapping;
+    }
+
     const portfolioName = payload.portfolioName || 'General Portfolio';
     const bankName = payload.bankName || 'Financial Institution';
 

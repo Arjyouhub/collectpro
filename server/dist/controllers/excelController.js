@@ -46,7 +46,11 @@ async function commitExcel(request, reply) {
         if (!fileBuffer) {
             return reply.status(400).send({ error: 'Excel file buffer missing' });
         }
-        const mapping = typeof payload.mapping === 'string' ? JSON.parse(payload.mapping) : payload.mapping;
+        let mapping = payload.mapping ? (typeof payload.mapping === 'string' ? JSON.parse(payload.mapping) : payload.mapping) : null;
+        if (!mapping) {
+            const preview = excelService_1.ExcelService.parsePreview(fileBuffer);
+            mapping = preview.suggestedMapping;
+        }
         const portfolioName = payload.portfolioName || 'General Portfolio';
         const bankName = payload.bankName || 'Financial Institution';
         const { processedCases, summary } = excelService_1.ExcelService.processRows(fileBuffer, mapping, portfolioName, userId);

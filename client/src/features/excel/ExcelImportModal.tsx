@@ -181,9 +181,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
       formData.append('portfolioName', portfolioName);
       formData.append('bankName', bankName);
 
-      const { data } = await api.post('/excel/commit', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const { data } = await api.post('/excel/commit', formData);
 
       setSummary(data.summary);
       setStep(3);

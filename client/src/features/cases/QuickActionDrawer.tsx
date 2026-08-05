@@ -127,7 +127,7 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
           ptpDate
         });
       } else if (actionType === 'settlement') {
-        await api.post('/cases/' + caseItem._id, {
+        await api.put('/cases/' + caseItem._id, {
           status: 'Settlement_Requested',
           customFields: { settlementAmountRequested: Number(amount), settlementNotes: remarks }
         });
