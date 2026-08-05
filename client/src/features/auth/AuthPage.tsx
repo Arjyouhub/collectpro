@@ -32,43 +32,20 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async () => {
+  const handleDemoLogin = () => {
     setLoading(true);
     setError('');
-    try {
-      // Demo credentials
-      const demoEmail = 'executive@collectpro.ai';
-      const demoPassword = 'Password123!';
-
-      try {
-        const { data } = await api.post('/auth/login', { email: demoEmail, password: demoPassword });
-        setAuth(data.user, data.token);
-      } catch (err) {
-        // If demo user does not exist, register automatically
-        const { data } = await api.post('/auth/register', {
-          name: 'Rajesh Kumar (Field Exec)',
-          email: demoEmail,
-          password: demoPassword,
-          phone: '+91 98765 43210',
-          agentCode: 'AG-9042'
-        });
-        setAuth(data.user, data.token);
-      }
-    } catch (err: any) {
-      // Standalone client offline fallback mode if backend server is not running
-      setAuth(
-        {
-          id: 'demo-user-123',
-          name: 'Rajesh Kumar (Field Exec)',
-          email: 'executive@collectpro.ai',
-          agentCode: 'AG-9042',
-          role: 'Executive'
-        },
-        'demo-jwt-token-standalone-mode'
-      );
-    } finally {
-      setLoading(false);
-    }
+    setAuth(
+      {
+        id: 'demo-user-123',
+        name: 'Rajesh Kumar (Field Exec)',
+        email: 'executive@collectpro.ai',
+        agentCode: 'AG-9042',
+        role: 'Executive'
+      },
+      'demo-jwt-token-standalone-mode'
+    );
+    setLoading(false);
   };
 
   return (
