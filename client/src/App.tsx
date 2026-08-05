@@ -186,14 +186,14 @@ function MainApp() {
   }
 
   const rawCases: CollectionCase[] = caseData?.cases || mockSampleCases;
-  const cases: CollectionCase[] = [...customCases, ...rawCases];
+  const cases: CollectionCase[] = [...(customCases || []), ...(rawCases || [])].filter(Boolean);
   const totalCasesCount = cases.length;
-  const selectedCase = cases.find((c) => c._id === selectedCaseId) || null;
+  const selectedCase = cases.find((c) => c && c._id === selectedCaseId) || null;
 
   // Dynamic KPIs calculation for offline / custom imported portfolios
-  const totalPOS = cases.reduce((acc, c) => acc + c.totalPOS, 0);
-  const ptpCount = cases.filter((c) => c.status === 'PTP').length;
-  const paidCount = cases.filter((c) => c.status === 'Paid').length;
+  const totalPOS = cases.reduce((acc, c) => acc + (c?.totalPOS || 0), 0);
+  const ptpCount = cases.filter((c) => c?.status === 'PTP').length;
+  const paidCount = cases.filter((c) => c?.status === 'Paid').length;
 
   const dynamicKPIs = statsData?.kpis || {
     totalCases: totalCasesCount,
