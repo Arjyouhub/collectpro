@@ -14,12 +14,14 @@ import {
   Mic,
   MicOff,
   AlertTriangle,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { CollectionCase } from '../../types';
 import { useCaseStore } from '../../store/useCaseStore';
 import { MapService } from '../../services/mapService';
 import { QuickActionDrawer } from './QuickActionDrawer';
+import api from '../../api/client';
 
 interface CaseListViewProps {
   cases: CollectionCase[];
@@ -91,6 +93,29 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
     recognition.onend = () => setIsListening(false);
 
     recognition.start();
+  };
+
+  const handleDeleteCaseFromList = async (caseId: string, custName: string) => {
+    if (confirm(`Delete case record for "${custName}"?`)) {
+      try {
+        await api.delete(`/cases/${caseId}`).catch(() => {});
+      } catch (e) {}
+
+      const { customCases } = useCaseStore.getState();
+      const updated = customCases.filter((c) => c._id !== caseId);
+      try {
+        localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated));
+      } catch (e) {}
+      useCaseStore.setState({ customCases: updated });
+      refetch();
+    }
+  };
+
+  const handleClearCustomPortfolio = async () => {
+    if (confirm('Are you sure you want to clear all imported custom portfolio cases?')) {
+      useCaseStore.getState().clearCustomCases();
+      refetch();
+    }
   };
 
   const [ptpFilter, setPtpFilter] = useState<'All' | 'PTP_Active' | 'Broken_PTP' | 'NPA'>('All');
@@ -245,6 +270,14 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
 
+          <button
+            onClick={handleClearCustomPortfolio}
+            title="Clear Custom Imported Portfolio Cases"
+            className="w-9 h-9 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 flex items-center justify-center shrink-0"
+          >
+            <Trash2 className="w-4 h-4 text-rose-400" />
+          </button>
+
         </div>
 
         {/* PTP & Broken PTP Quick Action Filters Bar */}
@@ -361,6 +394,16 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
                             {caseItem.customerName}
                           </h3>
                           {isStarred && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCaseFromList(caseItem._id, caseItem.customerName);
+                            }}
+                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors shrink-0"
+                            title="Delete Case"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
                           {caseItem.portfolioName} <span className="text-slate-600">•</span> <span className="font-mono text-cyan-400 font-semibold">ID: {caseItem.accountNo}</span>

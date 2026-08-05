@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { CollectionCase } from '../../types';
 import api from '../../api/client';
+import { useCaseStore } from '../../store/useCaseStore';
 
 interface CaseDetailDrawerProps {
   caseItem: CollectionCase | null;
@@ -221,11 +222,23 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
                     <span>Case History</span>
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm('Delete this case portfolio entry?')) {
-                        onClose();
-                      }
+                    onClick={async () => {
                       setShowMoreMenu(false);
+                      if (confirm(`Delete case entry for ${caseItem.customerName} (Loan ID: ${caseItem.accountNo})?`)) {
+                        try {
+                          await api.delete(`/cases/${caseItem._id}`).catch(() => {});
+                        } catch (e) {}
+
+                        const { customCases } = useCaseStore.getState();
+                        const updated = customCases.filter((c) => c._id !== caseItem._id);
+                        try {
+                          localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated));
+                        } catch (e) {}
+                        useCaseStore.setState({ customCases: updated });
+
+                        onClose();
+                        onRefresh();
+                      }
                     }}
                     className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-950/60 font-semibold"
                   >
