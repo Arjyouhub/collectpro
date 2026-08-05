@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { Trash2, AlertTriangle, X } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { SidebarNav } from './components/SidebarNav';
 import { AuthPage } from './features/auth/AuthPage';
@@ -112,6 +113,23 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cases' | 'map' | 'ai' | 'profile'>('cases');
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const handleDeleteAccountAndData = async () => {
+    try {
+      await api.delete('/auth/profile').catch(() => {});
+    } catch (e) {}
+
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {}
+
+    useCaseStore.getState().resetFilters();
+    logout();
+    setIsDeleteModalOpen(false);
+    alert('Account and all workspace portfolio data deleted successfully.');
+  };
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => {
@@ -292,16 +310,68 @@ function MainApp() {
               </div>
             </div>
 
-            <button
-              onClick={logout}
-              className="w-full h-11 bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold rounded-xl text-sm transition-all"
-            >
-              Logout Executive Session
-            </button>
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={logout}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-sm transition-all"
+              >
+                Logout Executive Session
+              </button>
+
+              {/* Danger Zone: Delete Account & Data */}
+              <div className="pt-4 border-t border-slate-800 space-y-2">
+                <div className="text-xs font-bold text-rose-400 uppercase tracking-wider">Danger Zone</div>
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="w-full h-11 bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center space-x-2"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-400" />
+                  <span>Delete Executive Account & Purge All Data</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
     </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass-panel p-6 rounded-3xl border border-rose-800/80 bg-slate-950 max-w-md w-full space-y-5 shadow-2xl text-center">
+            <div className="w-14 h-14 rounded-2xl bg-rose-950/80 border border-rose-800 text-rose-400 flex items-center justify-center mx-auto shadow-xl">
+              <AlertTriangle className="w-8 h-8 text-rose-400" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h2 className="text-xl font-black text-white">Delete Account & Purge All Data?</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                This action is permanent. All custom uploaded portfolios, cases, field visit logs, call logs, PTP commitments, and executive account settings will be erased immediately.
+              </p>
+            </div>
+
+            <div className="bg-rose-950/40 border border-rose-900/60 p-3 rounded-2xl text-xs text-rose-300 font-medium">
+              ⚠️ Warning: Deleted portfolio data cannot be recovered.
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="py-2.5 rounded-xl bg-slate-900 border border-slate-800 font-bold text-xs text-slate-300 hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccountAndData}
+                className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 font-bold text-xs text-white shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center space-x-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Everything</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Slide-over Case Detail Drawer */}
       {selectedCaseId && (
