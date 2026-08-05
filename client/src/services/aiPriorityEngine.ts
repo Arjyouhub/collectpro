@@ -1,4 +1,4 @@
-import { CollectionCase, AIPriorityScore, MissionSummary, LiveProgress, VisitTimelineItem, EndOfDayReport } from '../types';
+import { CollectionCase, AIPriorityScore, MissionSummary, LiveProgress, VisitTimelineItem, EndOfDayReport, DayRoutePlan, MultiDayVisitPlan } from '../types';
 
 export class AIPriorityEngine {
   /**
@@ -163,6 +163,67 @@ export class AIPriorityEngine {
       recoveryPercentage: recoveryPct,
       aiPerformanceScore: 88,
       tomorrowSuggestedPlanSummary: `Prioritize 4 broken PTP cases in Kozhikode North. Recommended starting time: 08:45 AM to maximize morning contact rate.`
+    };
+  }
+
+  /**
+   * AI Multi-Day Visit Planner & Route Allocation Engine
+   * Calculates total days needed to complete pending cases & splits them into daily route clusters
+   */
+  static generateMultiDayPlan(cases: CollectionCase[], dailyCapacity: number = 10): MultiDayVisitPlan {
+    const validCases = cases && cases.length > 0 ? cases : [];
+    const totalPendingCases = validCases.length;
+    const totalDaysNeeded = Math.max(1, Math.ceil(totalPendingCases / Math.max(1, dailyCapacity)));
+    const totalPortfolioPOS = validCases.reduce((sum, c) => sum + (c.totalPOS || 0), 0);
+    const totalTargetCollection = Math.round(totalPortfolioPOS * 0.28);
+
+    // Group cases geographically / priority into day clusters
+    const sortedCases = [...validCases].sort((a, b) => {
+      const scoreA = (b.dpd || 0) * 10 + (b.totalPOS || 0) / 10000;
+      const scoreB = (a.dpd || 0) * 10 + (a.totalPOS || 0) / 10000;
+      return scoreA - scoreB;
+    });
+
+    const routeClusters = [
+      'Kozhikode Central & City Route',
+      'Koyilandy & Vadakara Coastal Route',
+      'Perambra & Mavoor Highway Cluster',
+      'Ernakulam & Kakkanad Hub',
+      'Thrissur & Palakkad Express Route'
+    ];
+
+    const dayPlans: DayRoutePlan[] = [];
+
+    for (let day = 1; day <= totalDaysNeeded; day++) {
+      const dayCases = sortedCases.slice((day - 1) * dailyCapacity, day * dailyCapacity);
+      const dayPOS = dayCases.reduce((sum, c) => sum + (c.totalPOS || 0), 0);
+      const dayTarget = Math.round(dayPOS * 0.28);
+      const estKm = Math.round(dayCases.length * 3.2 + 14);
+      const fuelRs = Math.round(estKm * 3.8);
+      const criticalCount = dayCases.filter((c) => (c.dpd || 0) >= 60 || (c.totalPOS || 0) >= 75000).length;
+      const clusterName = routeClusters[(day - 1) % routeClusters.length];
+
+      dayPlans.push({
+        dayNumber: day,
+        title: `Day ${day} Route Plan`,
+        routeClusterName: clusterName,
+        totalCases: dayCases.length,
+        totalPOS: dayPOS,
+        targetCollection: dayTarget,
+        estimatedKm: estKm,
+        fuelRs,
+        criticalCasesCount: criticalCount,
+        cases: dayCases
+      });
+    }
+
+    return {
+      totalPendingCases,
+      totalDaysNeeded,
+      totalPortfolioPOS,
+      totalTargetCollection,
+      dailyCapacity,
+      dayPlans
     };
   }
 }

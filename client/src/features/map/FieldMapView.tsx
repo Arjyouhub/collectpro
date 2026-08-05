@@ -32,7 +32,7 @@ import {
   HelpCircle,
   User
 } from 'lucide-react';
-import { CollectionCase, OptimizedRoute, VisitTimelineItem } from '../../types';
+import { CollectionCase, OptimizedRoute, VisitTimelineItem, DayRoutePlan } from '../../types';
 import { useCaseStore } from '../../store/useCaseStore';
 import { MapService, Waypoint } from '../../services/mapService';
 import { AIPriorityEngine } from '../../services/aiPriorityEngine';
@@ -167,14 +167,24 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({ cases, onSelectCase 
     }
   }, []);
 
-  // Filter cases by status
+  const [selectedDayPlan, setSelectedDayPlan] = useState<number | null>(null);
+
+  // Compute Multi-Day Plan
+  const multiDayPlan = React.useMemo(() => {
+    return AIPriorityEngine.generateMultiDayPlan(cases, 10);
+  }, [cases]);
+
+  // Filter cases by status & selected day plan
   const filteredCases = React.useMemo(() => {
     let result = [...cases];
+    if (selectedDayPlan !== null && multiDayPlan.dayPlans[selectedDayPlan - 1]) {
+      result = multiDayPlan.dayPlans[selectedDayPlan - 1].cases;
+    }
     if (statusFilter !== 'All') {
       result = result.filter((c) => c.status === statusFilter);
     }
     return result;
-  }, [cases, statusFilter]);
+  }, [cases, statusFilter, selectedDayPlan, multiDayPlan]);
 
   // Compute Mission Summary KPIs
   const missionSummary = React.useMemo(() => {
@@ -465,6 +475,103 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({ cases, onSelectCase 
           <FileText className="w-3.5 h-3.5" />
           <span>Report</span>
         </button>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 0. AI MULTI-DAY VISIT PLANNER & ROUTE STRATEGY HUB            */}
+      {/* ------------------------------------------------------------- */}
+      <div className="glass-panel p-4 sm:p-5 rounded-2xl border border-blue-500/30 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/40 space-y-4 shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs uppercase tracking-wider">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              <span>AI Multi-Day Visit Planner & Route Strategy</span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-black text-white mt-0.5 flex flex-wrap items-center gap-2">
+              <span>Target Execution Plan:</span>
+              <span className="text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-lg border border-cyan-800 text-xs sm:text-sm font-bold">
+                📅 {multiDayPlan.totalDaysNeeded} Days Needed
+              </span>
+              <span className="text-emerald-400 text-xs font-semibold">
+                ({multiDayPlan.totalPendingCases} Total Pending Cases @ 10/day)
+              </span>
+            </h2>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {selectedDayPlan !== null ? (
+              <button
+                onClick={() => setSelectedDayPlan(null)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition-all flex items-center space-x-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Show All Portfolio Cases ({cases.length})</span>
+              </button>
+            ) : (
+              <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+                10 Visits / Day Capacity
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Multi-Day Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {multiDayPlan.dayPlans.map((plan: DayRoutePlan) => {
+            const isSelected = selectedDayPlan === plan.dayNumber;
+            return (
+              <div
+                key={plan.dayNumber}
+                className={`glass-card p-4 rounded-2xl border transition-all space-y-3 ${
+                  isSelected
+                    ? 'border-cyan-500 bg-cyan-950/30 ring-2 ring-cyan-500/30 shadow-xl'
+                    : 'border-slate-800 hover:border-blue-500/50 bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-white bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center space-x-1">
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{plan.title}</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">
+                    {plan.totalCases} Cases
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-cyan-300 truncate">{plan.routeClusterName}</h3>
+                  <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                    <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
+                      <div className="text-[10px] text-slate-400">Total POS</div>
+                      <div className="font-bold text-white">₹{plan.totalPOS.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="bg-emerald-950/30 p-2 rounded-xl border border-emerald-800/40">
+                      <div className="text-[10px] text-emerald-400 font-semibold">Target Collect</div>
+                      <div className="font-bold text-emerald-300">₹{plan.targetCollection.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
+                  <span>🛣️ {plan.estimatedKm} km route</span>
+                  <span>⛽ ₹{plan.fuelRs} fuel</span>
+                </div>
+
+                <button
+                  onClick={() => setSelectedDayPlan(isSelected ? null : plan.dayNumber)}
+                  className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5 ${
+                    isSelected
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
+                  }`}
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>{isSelected ? '✓ Route Active on Map' : `Activate Day ${plan.dayNumber} Mission`}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}

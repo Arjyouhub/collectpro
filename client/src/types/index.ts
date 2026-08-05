@@ -188,3 +188,25 @@ export interface EndOfDayReport {
   aiPerformanceScore: number;
   tomorrowSuggestedPlanSummary: string;
 }
+
+export interface DayRoutePlan {
+  dayNumber: number;
+  title: string;
+  routeClusterName: string;
+  totalCases: number;
+  totalPOS: number;
+  targetCollection: number;
+  estimatedKm: number;
+  fuelRs: number;
+  criticalCasesCount: number;
+  cases: CollectionCase[];
+}
+
+export interface MultiDayVisitPlan {
+  totalPendingCases: number;
+  totalDaysNeeded: number;
+  totalPortfolioPOS: number;
+  totalTargetCollection: number;
+  dailyCapacity: number;
+  dayPlans: DayRoutePlan[];
+}
