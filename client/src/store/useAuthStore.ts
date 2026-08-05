@@ -8,11 +8,21 @@ interface AuthState {
   logout: () => void;
 }
 
-const savedUser = localStorage.getItem('collectpro_user');
+const getInitialUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem('collectpro_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    localStorage.removeItem('collectpro_user');
+    return null;
+  }
+};
+
+const savedUser = getInitialUser();
 const savedToken = localStorage.getItem('collectpro_jwt_token');
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: savedUser ? JSON.parse(savedUser) : null,
+  user: savedUser,
   token: savedToken || null,
   setAuth: (user, token) => {
     localStorage.setItem('collectpro_user', JSON.stringify(user));

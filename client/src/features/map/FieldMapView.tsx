@@ -264,15 +264,23 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({ cases, onSelectCase 
     if (mobileTab !== 'map' && window.innerWidth < 768) return;
     if (!mapRef.current) return;
 
-    if (!leafletInstanceRef.current) {
-      const map = L.map(mapRef.current).setView([origin.lat, origin.lng], 11);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-      leafletInstanceRef.current = map;
+    if (!leafletInstanceRef.current && mapRef.current) {
+      if ((mapRef.current as any)._leaflet_id) {
+        (mapRef.current as any)._leaflet_id = null;
+      }
+      try {
+        const map = L.map(mapRef.current).setView([origin.lat, origin.lng], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        leafletInstanceRef.current = map;
+      } catch (err) {
+        console.warn('[FieldMapView] Leaflet map init skipped:', err);
+      }
     }
 
     const map = leafletInstanceRef.current;
+    if (!map) return;
     setTimeout(() => map.invalidateSize(), 200);
 
     // Clear existing markers
