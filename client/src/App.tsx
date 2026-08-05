@@ -210,6 +210,8 @@ function MainApp() {
         activeTab={activeTab}
         setActiveTab={(t: any) => setActiveTab(t)}
         openExcelModal={() => setIsExcelModalOpen(true)}
+        cases={cases}
+        onSelectCase={(id) => setSelectedCaseId(id)}
       />
 
       <div className="flex flex-1 relative">

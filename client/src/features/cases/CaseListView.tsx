@@ -93,13 +93,23 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
     recognition.start();
   };
 
+  const [ptpFilter, setPtpFilter] = useState<'All' | 'PTP_Active' | 'Broken_PTP' | 'NPA'>('All');
+
   // Apply Sort Options & Value Filter
   const displayCases = React.useMemo(() => {
     let result = [...cases];
 
+    // Filter by PTP status & broken PTP revisits
+    if (ptpFilter === 'PTP_Active') {
+      result = result.filter((c) => c.status === 'PTP' || c.ptpAmount);
+    } else if (ptpFilter === 'Broken_PTP') {
+      result = result.filter((c) => (c.status === 'PTP' && (c.dpd || 0) >= 60) || (c.dpd || 0) >= 90);
+    } else if (ptpFilter === 'NPA') {
+      result = result.filter((c) => (c.dpd || 0) >= 90);
+    }
+
     // Filter by Value Range
     if (valueRange === 'High') {
-      // Sort High to Low POS balance without hiding uploaded cases!
       result.sort((a, b) => b.totalPOS - a.totalPOS);
     } else if (valueRange === 'Medium') {
       result = result.filter((c) => c.totalPOS >= 20000 && c.totalPOS < 100000);
@@ -119,7 +129,7 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
     }
 
     return result;
-  }, [cases, sortOption, valueRange]);
+  }, [cases, sortOption, valueRange, ptpFilter]);
 
   const count = displayCases.length;
 
@@ -235,6 +245,53 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
 
+        </div>
+
+        {/* PTP & Broken PTP Quick Action Filters Bar */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-1.5 scrollbar-none">
+          <button
+            onClick={() => setPtpFilter('All')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
+              ptpFilter === 'All'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-slate-900 text-slate-400 border border-slate-800'
+            }`}
+          >
+            All Cases ({totalCases})
+          </button>
+
+          <button
+            onClick={() => setPtpFilter('PTP_Active')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${
+              ptpFilter === 'PTP_Active'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'bg-slate-900 text-amber-400 border border-amber-500/30'
+            }`}
+          >
+            <span>⏰ Active PTP ({cases.filter((c) => c.status === 'PTP' || c.ptpAmount).length})</span>
+          </button>
+
+          <button
+            onClick={() => setPtpFilter('Broken_PTP')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${
+              ptpFilter === 'Broken_PTP'
+                ? 'bg-rose-600 text-white shadow-md'
+                : 'bg-slate-900 text-rose-400 border border-rose-500/30 animate-pulse'
+            }`}
+          >
+            <span>🔴 Broken PTP - Revisit ({cases.filter((c) => (c.status === 'PTP' && (c.dpd || 0) >= 60) || (c.dpd || 0) >= 90).length})</span>
+          </button>
+
+          <button
+            onClick={() => setPtpFilter('NPA')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
+              ptpFilter === 'NPA'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-slate-900 text-purple-400 border border-purple-500/30'
+            }`}
+          >
+            🚨 NPA 90+ DPD ({cases.filter((c) => (c.dpd || 0) >= 90).length})
+          </button>
         </div>
       </div>
 
@@ -353,6 +410,30 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
                         >
                           <span>{expandedAddresses.has(caseItem._id) ? 'Show Less' : 'Show More'}</span>
                         </button>
+                      )}
+
+                      {/* PTP Commitment & Broken PTP Callout Alert Banner */}
+                      {(caseItem.status === 'PTP' || caseItem.ptpAmount || (caseItem.dpd || 0) >= 60) && (
+                        <div className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 mt-1.5 ${
+                          (caseItem.dpd || 0) >= 90 || (caseItem.status === 'PTP' && (caseItem.dpd || 0) >= 60)
+                            ? 'bg-rose-950/50 border-rose-800/80 text-rose-300'
+                            : 'bg-amber-950/50 border-amber-800/80 text-amber-300'
+                        }`}>
+                          <div className="flex items-center space-x-1.5 truncate">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            <span className="truncate">
+                              {(caseItem.dpd || 0) >= 90 || (caseItem.status === 'PTP' && (caseItem.dpd || 0) >= 60)
+                                ? `🔴 Broken PTP - Revisit Required (DPD: ${caseItem.dpd})`
+                                : `⏰ PTP Active: ₹${(caseItem.ptpAmount || Math.round(caseItem.totalPOS * 0.3)).toLocaleString('en-IN')} (Due: ${caseItem.ptpDate || 'Today'})`}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => onSelectCase(caseItem)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-white hover:bg-slate-800 shrink-0"
+                          >
+                            Revisit
+                          </button>
+                        </div>
                       )}
                     </div>
 
