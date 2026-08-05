@@ -15,6 +15,7 @@ interface CaseFilterState {
 
   customCases: CollectionCase[];
   addCustomCases: (cases: CollectionCase[]) => void;
+  clearCustomCases: () => void;
 
   selectedCaseId: string | null;
   selectedCasesForRoute: string[];
@@ -34,6 +35,15 @@ interface CaseFilterState {
   resetFilters: () => void;
 }
 
+const getInitialCustomCases = (): CollectionCase[] => {
+  try {
+    const saved = localStorage.getItem('collectpro_custom_cases');
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 export const useCaseStore = create<CaseFilterState>((set) => ({
   search: '',
   portfolio: 'All',
@@ -46,11 +56,21 @@ export const useCaseStore = create<CaseFilterState>((set) => ({
   page: 1,
   limit: 50,
 
-  customCases: [],
+  customCases: getInitialCustomCases(),
   addCustomCases: (newCases) =>
-    set((state) => ({
-      customCases: [...newCases, ...state.customCases]
-    })),
+    set((state) => {
+      const updated = [...newCases, ...state.customCases];
+      try {
+        localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated));
+      } catch (e) {}
+      return { customCases: updated };
+    }),
+  clearCustomCases: () => {
+    try {
+      localStorage.removeItem('collectpro_custom_cases');
+    } catch (e) {}
+    set({ customCases: [] });
+  },
 
   selectedCaseId: null,
   selectedCasesForRoute: [],
@@ -83,4 +103,3 @@ export const useCaseStore = create<CaseFilterState>((set) => ({
       page: 1
     })
 }));
-
