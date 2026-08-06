@@ -22,6 +22,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { CollectionCase } from '../../types';
+import { SuccessModal } from '../../components/SuccessModal';
 import api from '../../api/client';
 import { useCaseStore } from '../../store/useCaseStore';
 
@@ -59,6 +60,9 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
   );
   const [aiLoading, setAiLoading] = useState(false);
 
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successTitle, setSuccessTitle] = useState('Action Saved!');
+
   // Submitting Call Log
   const handleSaveCallLog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,13 +93,13 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
       useCaseStore.setState({ customCases: updated });
       try { localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated)); } catch(e){}
 
-      alert('Call Log Saved successfully!');
+      setSuccessTitle(callOutcome === 'PTP' ? 'PTP Commitment Saved!' : 'Call Log Saved!');
+      setShowSuccessModal(true);
       onRefresh();
-      setActiveTab('history');
     } catch (err: any) {
-      alert('Call Log Saved successfully!');
+      setSuccessTitle(callOutcome === 'PTP' ? 'PTP Commitment Saved!' : 'Call Log Saved!');
+      setShowSuccessModal(true);
       onRefresh();
-      setActiveTab('history');
     }
   };
 
@@ -131,17 +135,13 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
       useCaseStore.setState({ customCases: updated });
       try { localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated)); } catch(e){}
 
-      alert('Visit Log Saved successfully!');
+      setSuccessTitle(paidAmt > 0 ? 'Payment Collected & Saved!' : 'Visit Log Saved!');
+      setShowSuccessModal(true);
       onRefresh();
-      if (paidAmt > 0) {
-        setActiveTab('receipt');
-      } else {
-        setActiveTab('history');
-      }
     } catch (err: any) {
-      alert('Visit Log Saved successfully!');
+      setSuccessTitle('Visit Log Saved!');
+      setShowSuccessModal(true);
       onRefresh();
-      setActiveTab('history');
     }
   };
 
@@ -656,6 +656,16 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
 
         </div>
       </div>
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={successTitle}
+        message={`Update for ${caseItem.customerName} has been recorded successfully.`}
+        customerName={caseItem.customerName}
+        ptpDate={ptpDate || undefined}
+        ptpAmount={ptpAmount ? Number(ptpAmount) : undefined}
+      />
     </div>
   );
 };

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CollectionCase } from '../../types';
 import { useCaseStore } from '../../store/useCaseStore';
+import { SuccessModal } from '../../components/SuccessModal';
 import api from '../../api/client';
 
 interface QuickActionDrawerProps {
@@ -47,6 +48,7 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
   const [gpsLoading, setGpsLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Automatically fetch GPS when opening drawer
   useEffect(() => {
@@ -172,16 +174,18 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
       useCaseStore.setState({ customCases: updated });
       try { localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated)); } catch(e){}
 
-      alert('Action logged successfully!');
-      onSuccess();
-      onClose();
+      setShowSuccessModal(true);
     } catch (err: any) {
-      alert('Action logged successfully!');
-      onSuccess();
-      onClose();
+      setShowSuccessModal(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    onSuccess();
+    onClose();
   };
 
   return (
@@ -383,6 +387,24 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
         </form>
 
       </div>
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessClose}
+        title={
+          actionType === 'ptp'
+            ? 'PTP Commitment Saved!'
+            : actionType === 'payment'
+            ? 'Payment Collection Recorded!'
+            : actionType === 'settlement'
+            ? 'Settlement Requested!'
+            : 'Field Visit Action Saved!'
+        }
+        message={`Outcome for ${caseItem.customerName} has been recorded successfully.`}
+        customerName={caseItem.customerName}
+        ptpDate={actionType === 'ptp' ? ptpDate : undefined}
+        ptpAmount={actionType === 'ptp' || actionType === 'payment' ? Number(amount) : undefined}
+      />
     </div>
   );
 };

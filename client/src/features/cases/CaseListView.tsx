@@ -98,14 +98,14 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
   const handleDeleteCaseFromList = async (caseId: string, custName: string) => {
     if (confirm(`Delete case record for "${custName}"?`)) {
       try {
-        await api.delete(`/cases/${caseId}`).catch(() => {});
-      } catch (e) {}
+        await api.delete(`/cases/${caseId}`).catch(() => { });
+      } catch (e) { }
 
       const { customCases } = useCaseStore.getState();
       const updated = customCases.filter((c) => c._id !== caseId);
       try {
         localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated));
-      } catch (e) {}
+      } catch (e) { }
       useCaseStore.setState({ customCases: updated });
       refetch();
     }
@@ -130,7 +130,7 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
     if (ptpFilter === 'PTP_Active') {
       result = result.filter((c) => c.status === 'PTP' && c.ptpDate && c.ptpDate >= todayStr);
     } else if (ptpFilter === 'Broken_PTP') {
-      result = result.filter((c) => 
+      result = result.filter((c) =>
         c.status === 'Broken_PTP' || (c.ptpDate && c.ptpDate < todayStr && c.status !== 'Paid')
       );
     } else if (ptpFilter === 'NPA') {
@@ -165,7 +165,7 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
   const rowVirtualizer = useVirtualizer({
     count,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 270, // Mobile customer card height (~270px)
+    estimateSize: () => 225, // Equal-height compact mobile customer card (225px)
     overscan: 5
   });
 
@@ -198,13 +198,13 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
 
   return (
     <div className="space-y-3 pb-24 md:pb-6 max-w-full overflow-x-hidden">
-      
+
       {/* Google Maps / PhonePe Style Floating Rounded Search Bar (Sticky top-14) */}
       <div className="sticky top-14 z-20 pt-1 pb-1 px-0.5 bg-slate-950/95 backdrop-blur-xl">
         <div className="flex items-center gap-2 h-12 glass-panel p-1.5 rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/90">
-          
+
           <Search className="w-4 h-4 text-slate-400 ml-2 shrink-0" />
-          
+
           <input
             type="text"
             value={search}
@@ -247,9 +247,8 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
           {/* Voice Search Mic Button */}
           <button
             onClick={handleVoiceSearch}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
-              isListening ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'
-            }`}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0 ${isListening ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'
+              }`}
             title="Voice Search"
           >
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -289,44 +288,40 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
         <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-1.5 scrollbar-none">
           <button
             onClick={() => setPtpFilter('All')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
-              ptpFilter === 'All'
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${ptpFilter === 'All'
                 ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-slate-900 text-slate-400 border border-slate-800'
-            }`}
+              }`}
           >
             All Cases ({totalCases})
           </button>
 
           <button
             onClick={() => setPtpFilter('PTP_Active')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${
-              ptpFilter === 'PTP_Active'
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${ptpFilter === 'PTP_Active'
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'bg-slate-900 text-amber-400 border border-amber-500/30'
-            }`}
+              }`}
           >
             <span>⏰ Active PTP ({cases.filter((c) => c.status === 'PTP' || c.ptpAmount).length})</span>
           </button>
 
           <button
             onClick={() => setPtpFilter('Broken_PTP')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${
-              ptpFilter === 'Broken_PTP'
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1 ${ptpFilter === 'Broken_PTP'
                 ? 'bg-rose-600 text-white shadow-md'
                 : 'bg-slate-900 text-rose-400 border border-rose-500/30 animate-pulse'
-            }`}
+              }`}
           >
             <span>🔴 Broken PTP - Revisit ({cases.filter((c) => (c.status === 'PTP' && (c.dpd || 0) >= 60) || (c.dpd || 0) >= 90).length})</span>
           </button>
 
           <button
             onClick={() => setPtpFilter('NPA')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
-              ptpFilter === 'NPA'
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${ptpFilter === 'NPA'
                 ? 'bg-purple-600 text-white shadow-md'
                 : 'bg-slate-900 text-purple-400 border border-purple-500/30'
-            }`}
+              }`}
           >
             🚨 NPA 90+ DPD ({cases.filter((c) => (c.dpd || 0) >= 90).length})
           </button>
@@ -349,9 +344,10 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
         ) : (
           <div
             style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
+              height: `${rowVirtualizer.getTotalSize() + 50}px`,
               width: '100%',
-              position: 'relative'
+              position: 'relative',
+              paddingTop: '40px'
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -367,12 +363,12 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
 
               return (
                 <div
-                  key={virtualRow.key || caseItem._id}
+                  key={caseItem._id}
                   ref={rowVirtualizer.measureElement}
                   data-index={virtualRow.index}
                   style={{
                     position: 'absolute',
-                    top: 0,
+                    top: '40px',
                     left: 0,
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`
@@ -381,11 +377,10 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
                 >
                   {/* MATERIAL DESIGN 3 CUSTOMER CARD (Rounded 20px) */}
                   <div
-                    className={`glass-card p-3.5 rounded-[20px] border shadow-lg transition-all space-y-2.5 max-w-full ${
-                      isSelectedForRoute
+                    className={`glass-card p-3.5 rounded-[20px] border shadow-lg transition-all space-y-2.5 max-w-full ${isSelectedForRoute
                         ? 'border-blue-500/80 bg-blue-950/20'
                         : 'border-slate-800/80 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     {/* Row 1: Customer Name (1-Line Truncate) & POS Amount */}
                     <div className="flex items-center justify-between gap-2">
@@ -460,33 +455,40 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
                       )}
 
                       {/* PTP Commitment & Broken PTP Callout Alert Banner */}
-                      {(caseItem.status === 'PTP' || caseItem.ptpAmount || (caseItem.dpd || 0) >= 60) && (
-                        <div className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 mt-1.5 ${
-                          (caseItem.dpd || 0) >= 90 || (caseItem.status === 'PTP' && (caseItem.dpd || 0) >= 60)
-                            ? 'bg-rose-950/50 border-rose-800/80 text-rose-300'
-                            : 'bg-amber-950/50 border-amber-800/80 text-amber-300'
-                        }`}>
-                          <div className="flex items-center space-x-1.5 truncate">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                            <span className="truncate">
-                              {(caseItem.dpd || 0) >= 90 || (caseItem.status === 'PTP' && (caseItem.dpd || 0) >= 60)
-                                ? `🔴 Broken PTP - Revisit Required (DPD: ${caseItem.dpd})`
-                                : `⏰ PTP Active: ₹${(caseItem.ptpAmount || Math.round(caseItem.totalPOS * 0.3)).toLocaleString('en-IN')} (Due: ${caseItem.ptpDate || 'Today'})`}
-                            </span>
+                      {(caseItem.status === 'PTP' || caseItem.status === 'Broken_PTP' || caseItem.ptpDate || caseItem.ptpAmount) && (() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const isExpiredPtp = caseItem.status === 'Broken_PTP' || (caseItem.ptpDate && caseItem.ptpDate < todayStr && caseItem.status !== 'Paid');
+                        const displayAmt = caseItem.ptpAmount || Math.round((caseItem.totalPOS || 0) * 0.3);
+                        const displayDate = caseItem.ptpDate || 'Scheduled';
+
+                        return (
+                          <div className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 mt-1.5 ${
+                            isExpiredPtp
+                              ? 'bg-rose-950/60 border-rose-800/80 text-rose-300'
+                              : 'bg-amber-950/60 border-amber-800/80 text-amber-300'
+                          }`}>
+                            <div className="flex items-center space-x-1.5 truncate">
+                              <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${isExpiredPtp ? 'text-rose-400' : 'text-amber-400'}`} />
+                              <span className="truncate">
+                                {isExpiredPtp
+                                  ? `🔴 Broken PTP: ₹${displayAmt.toLocaleString('en-IN')} (Promised: ${displayDate} - Expired)`
+                                  : `⏰ PTP Active: ₹${displayAmt.toLocaleString('en-IN')} (Promised Date: ${displayDate})`}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => onSelectCase(caseItem)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-white hover:bg-slate-800 shrink-0"
+                            >
+                              Details
+                            </button>
                           </div>
-                          <button
-                            onClick={() => onSelectCase(caseItem)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-white hover:bg-slate-800 shrink-0"
-                          >
-                            Revisit
-                          </button>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* ROW 3: 5 QUICK ACTION ICON BUTTONS (44x44px Touch Targets) */}
                     <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-800/80">
-                      
+
                       {/* 1. CALL */}
                       <a
                         href={`tel:${caseItem.phone}`}
