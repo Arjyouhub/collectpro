@@ -165,7 +165,7 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
   const rowVirtualizer = useVirtualizer({
     count,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 225, // Equal-height compact mobile customer card (225px)
+    estimateSize: () => 270, // Mobile customer card height (~270px)
     overscan: 5
   });
 
@@ -349,10 +349,9 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
         ) : (
           <div
             style={{
-              height: `${rowVirtualizer.getTotalSize() + 50}px`,
+              height: `${rowVirtualizer.getTotalSize()}px`,
               width: '100%',
-              position: 'relative',
-              paddingTop: '40px'
+              position: 'relative'
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -368,12 +367,12 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
 
               return (
                 <div
-                  key={caseItem._id}
+                  key={virtualRow.key || caseItem._id}
                   ref={rowVirtualizer.measureElement}
                   data-index={virtualRow.index}
                   style={{
                     position: 'absolute',
-                    top: '40px',
+                    top: 0,
                     left: 0,
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`
