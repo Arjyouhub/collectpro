@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Bot, ArrowRight, ShieldCheck, FileText, CheckCircle, RefreshCw, MapPin } from 'lucide-react';
+import { Sparkles, Bot, ArrowRight, ShieldCheck, FileText, CheckCircle, RefreshCw, MapPin, Calendar, UserCheck } from 'lucide-react';
 import api from '../../api/client';
 import { CollectionCase } from '../../types';
+import { DailyAIVisitPalan } from './DailyAIVisitPalan';
 
-export const AICopilotModal: React.FC = () => {
+interface AICopilotModalProps {
+  onSelectCase?: (caseId: string) => void;
+  onOpenMap?: () => void;
+}
+
+export const AICopilotModal: React.FC<AICopilotModalProps> = ({ onSelectCase, onOpenMap }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'DAILY_PLAN' | 'SINGLE_CASE'>('DAILY_PLAN');
+
   const { data: casesData } = useQuery({
     queryKey: ['cases-ai-copilot'],
     queryFn: async () => {
@@ -93,181 +101,214 @@ export const AICopilotModal: React.FC = () => {
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       
-      {/* Header Banner */}
-      <div className="glass-panel p-6 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/30 flex items-center justify-between shadow-2xl">
-        <div>
-          <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-xs uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" />
-            <span>OpenAI Collection Intelligence Studio</span>
-          </div>
-          <h1 className="text-2xl font-black text-white mt-1">AI Collection Copilot</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Select any uploaded customer case from your portfolio to generate 100% accurate location-based visit timing and talk tracks.
-          </p>
-        </div>
-        <Bot className="w-12 h-12 text-cyan-400 hidden sm:block stroke-[1.5]" />
+      {/* Top AI Navigation Sub-Tabs */}
+      <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 w-fit max-w-full overflow-x-auto">
+        <button
+          onClick={() => setActiveSubTab('DAILY_PLAN')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            activeSubTab === 'DAILY_PLAN'
+              ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-4 h-4 text-cyan-300" />
+          <span>Daily AI Visit & Data Yield (விசிட் & டேட்டா பலன்)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('SINGLE_CASE')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            activeSubTab === 'SINGLE_CASE'
+              ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <UserCheck className="w-4 h-4 text-cyan-300" />
+          <span>Single Customer AI Copilot & Script</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Case Selector & Parameter Input Form */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
-          <h2 className="font-bold text-white text-base">Select Customer Case</h2>
-
-          <div className="space-y-3">
-            {/* Uploaded Portfolio Customer Case Dropdown */}
-            {cases.length > 0 && (
-              <div>
-                <label className="block text-xs font-bold text-cyan-400 mb-1">
-                  Choose Customer from Uploaded Excel ({cases.length} Cases)
-                </label>
-                <select
-                  value={selectedCaseId}
-                  onChange={(e) => handleSelectCaseChange(e.target.value)}
-                  className="w-full bg-slate-900 border border-cyan-500/50 rounded-xl p-2.5 text-xs text-white focus:outline-none font-bold"
-                >
-                  <option value="">-- Tap to Select Customer Case --</option>
-                  {cases.map((c: CollectionCase) => (
-                    <option key={c._id} value={c._id}>
-                      {c.customerName} - ₹{c.totalPOS.toLocaleString('en-IN')} POS ({c.city || 'Kozhikode'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
+      {activeSubTab === 'DAILY_PLAN' ? (
+        <DailyAIVisitPalan cases={cases} onSelectCase={onSelectCase} onOpenMap={onOpenMap} />
+      ) : (
+        <>
+          {/* Header Banner */}
+          <div className="glass-panel p-6 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/30 flex items-center justify-between shadow-2xl">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Name</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Address / City</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Total POS (₹)</label>
-              <input
-                type="number"
-                value={totalPOS}
-                onChange={(e) => setTotalPOS(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">DPD Days</label>
-                <input
-                  type="number"
-                  value={dpd}
-                  onChange={(e) => setDpd(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-                />
+              <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-xs uppercase tracking-wider">
+                <Sparkles className="w-4 h-4" />
+                <span>OpenAI Collection Intelligence Studio</span>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Bucket</label>
-                <select
-                  value={bucket}
-                  onChange={(e) => setBucket(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-                >
-                  <option value="1-30 DPD">1-30 DPD</option>
-                  <option value="31-60 DPD">31-60 DPD</option>
-                  <option value="61-90 DPD">61-90 DPD</option>
-                  <option value="90+ DPD (NPA)">90+ DPD (NPA)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Objection</label>
-              <select
-                value={objection}
-                onChange={(e) => setObjection(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                <option value="Job Loss">Job Loss / Unemployment</option>
-                <option value="Medical Emergency">Medical Emergency</option>
-                <option value="Dispute on Charges">Dispute on Penalty Charges</option>
-                <option value="Refused to Pay">Refused to Pay / Wilful Defaulter</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleManualRunAI}
-              disabled={loading}
-              className="w-full mt-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center justify-center space-x-2 text-xs"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>{loading ? 'Analyzing Case...' : 'Analyze & Recommend Visit Plan'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* AI Output Display Panel */}
-        <div className="lg:col-span-2 space-y-4">
-          {result ? (
-            <>
-              {/* Score & Summary */}
-              <div className="glass-panel p-6 rounded-2xl border border-cyan-500/30 space-y-4 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-white text-lg">AI Recovery Likelihood Score</h3>
-                    <p className="text-xs text-slate-400">Evaluated based on DPD aging and customer objection pattern</p>
-                  </div>
-                  <div className="text-3xl font-black text-cyan-400 bg-cyan-950/60 px-4 py-1.5 rounded-2xl border border-cyan-800/60">
-                    {result.score}%
-                  </div>
-                </div>
-
-                {/* Verified Location Box */}
-                <div className="bg-cyan-950/40 p-3 rounded-xl border border-cyan-800/40 text-xs text-cyan-300 flex items-start space-x-2">
-                  <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <span>{result.locationAnalysis}</span>
-                </div>
-
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="text-xs font-bold text-cyan-400 flex items-center space-x-1">
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>3-Bullet Action Plan Summary:</span>
-                  </div>
-                  <p className="text-xs text-slate-200 leading-relaxed font-sans">{result.summary}</p>
-                </div>
-              </div>
-
-              {/* Smart Talk Track */}
-              <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
-                <h3 className="font-bold text-white text-base">Customized Executive Field Talk Track</h3>
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed font-mono">
-                  {result.script}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="glass-panel p-10 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-3 h-full">
-              <Bot className="w-12 h-12 text-cyan-400 stroke-[1.5]" />
-              <h3 className="font-bold text-white text-base">Ready to Analyze Uploaded Cases</h3>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Select a customer case from the dropdown on the left to generate 100% accurate location-based visit timing and negotiation scripts.
+              <h1 className="text-2xl font-black text-white mt-1">AI Collection Copilot</h1>
+              <p className="text-sm text-slate-400 mt-1">
+                Select any uploaded customer case from your portfolio to generate 100% accurate location-based visit timing and talk tracks.
               </p>
             </div>
-          )}
-        </div>
+            <Bot className="w-12 h-12 text-cyan-400 hidden sm:block stroke-[1.5]" />
+          </div>
 
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Case Selector & Parameter Input Form */}
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+              <h2 className="font-bold text-white text-base">Select Customer Case</h2>
+
+              <div className="space-y-3">
+                {/* Uploaded Portfolio Customer Case Dropdown */}
+                {cases.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-bold text-cyan-400 mb-1">
+                      Choose Customer from Uploaded Excel ({cases.length} Cases)
+                    </label>
+                    <select
+                      value={selectedCaseId}
+                      onChange={(e) => handleSelectCaseChange(e.target.value)}
+                      className="w-full bg-slate-900 border border-cyan-500/50 rounded-xl p-2.5 text-xs text-white focus:outline-none font-bold"
+                    >
+                      <option value="">-- Tap to Select Customer Case --</option>
+                      {cases.map((c: CollectionCase) => (
+                        <option key={c._id} value={c._id}>
+                          {c.customerName} - ₹{c.totalPOS.toLocaleString('en-IN')} POS ({c.city || 'Kozhikode'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Address / City</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Total POS (₹)</label>
+                  <input
+                    type="number"
+                    value={totalPOS}
+                    onChange={(e) => setTotalPOS(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">DPD Days</label>
+                    <input
+                      type="number"
+                      value={dpd}
+                      onChange={(e) => setDpd(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Bucket</label>
+                    <select
+                      value={bucket}
+                      onChange={(e) => setBucket(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="1-30 DPD">1-30 DPD</option>
+                      <option value="31-60 DPD">31-60 DPD</option>
+                      <option value="61-90 DPD">61-90 DPD</option>
+                      <option value="90+ DPD (NPA)">90+ DPD (NPA)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Customer Objection</label>
+                  <select
+                    value={objection}
+                    onChange={(e) => setObjection(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="Job Loss">Job Loss / Unemployment</option>
+                    <option value="Medical Emergency">Medical Emergency</option>
+                    <option value="Dispute on Charges">Dispute on Penalty Charges</option>
+                    <option value="Refused to Pay">Refused to Pay / Wilful Defaulter</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleManualRunAI}
+                  disabled={loading}
+                  className="w-full mt-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center justify-center space-x-2 text-xs"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span>{loading ? 'Analyzing Case...' : 'Analyze & Recommend Visit Plan'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* AI Output Display Panel */}
+            <div className="lg:col-span-2 space-y-4">
+              {result ? (
+                <>
+                  {/* Score & Summary */}
+                  <div className="glass-panel p-6 rounded-2xl border border-cyan-500/30 space-y-4 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-white text-lg">AI Recovery Likelihood Score</h3>
+                        <p className="text-xs text-slate-400">Evaluated based on DPD aging and customer objection pattern</p>
+                      </div>
+                      <div className="text-3xl font-black text-cyan-400 bg-cyan-950/60 px-4 py-1.5 rounded-2xl border border-cyan-800/60">
+                        {result.score}%
+                      </div>
+                    </div>
+
+                    {/* Verified Location Box */}
+                    <div className="bg-cyan-950/40 p-3 rounded-xl border border-cyan-800/40 text-xs text-cyan-300 flex items-start space-x-2">
+                      <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>{result.locationAnalysis}</span>
+                    </div>
+
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                      <div className="text-xs font-bold text-cyan-400 flex items-center space-x-1">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>3-Bullet Action Plan Summary:</span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed font-sans">{result.summary}</p>
+                    </div>
+                  </div>
+
+                  {/* Smart Talk Track */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
+                    <h3 className="font-bold text-white text-base">Customized Executive Field Talk Track</h3>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed font-mono">
+                      {result.script}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="glass-panel p-10 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-3 h-full">
+                  <Bot className="w-12 h-12 text-cyan-400 stroke-[1.5]" />
+                  <h3 className="font-bold text-white text-base">Ready to Analyze Uploaded Cases</h3>
+                  <p className="text-xs text-slate-400 max-w-sm">
+                    Select a customer case from the dropdown on the left to generate 100% accurate location-based visit timing and negotiation scripts.
+                  </p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </>
+      )}
 
     </div>
   );

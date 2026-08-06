@@ -16,8 +16,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openExc
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Compute Active PTP & Broken PTP Notification Items
-  const ptpActiveCases = cases.filter((c) => c.status === 'PTP' || c.ptpAmount);
-  const brokenPtpCases = cases.filter((c) => (c.status === 'PTP' && (c.dpd || 0) >= 60) || (c.dpd || 0) >= 90);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const ptpActiveCases = cases.filter((c) => c.status === 'PTP' && c.ptpDate && c.ptpDate >= todayStr);
+  const brokenPtpCases = cases.filter((c) => 
+    c.status === 'Broken_PTP' || (c.ptpDate && c.ptpDate < todayStr && c.status !== 'Paid')
+  );
 
   const totalNotifCount = ptpActiveCases.length + brokenPtpCases.length;
 

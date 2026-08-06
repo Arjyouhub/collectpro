@@ -67,7 +67,10 @@ export class AIPriorityEngine {
     const highPriorityCasesCount = cases.filter((c) => (c.dpd || 0) >= 60 || (c.totalPOS || 0) >= 50000).length;
     const settlementFollowupsCount = cases.filter((c) => c.status === 'Settlement_Requested' || (c.dpd || 0) >= 90).length;
     const ptpDueTodayCount = cases.filter((c) => c.status === 'PTP').length;
-    const brokenPtpCount = cases.filter((c) => c.status === 'PTP' && (c.dpd || 0) >= 90).length;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const brokenPtpCount = cases.filter((c) => 
+      c.status === 'Broken_PTP' || (c.ptpDate && c.ptpDate < todayStr && c.status !== 'Paid')
+    ).length;
     const highDpdCasesCount = cases.filter((c) => (c.dpd || 0) >= 90).length;
     const highPosCasesCount = cases.filter((c) => (c.totalPOS || 0) >= 100000).length;
     const unvisitedCasesCount = cases.filter((c) => c.status === 'Pending').length;

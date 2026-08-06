@@ -124,11 +124,15 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
   const displayCases = React.useMemo(() => {
     let result = [...cases];
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
     // Filter by PTP status & broken PTP revisits
     if (ptpFilter === 'PTP_Active') {
-      result = result.filter((c) => c.status === 'PTP' || c.ptpAmount);
+      result = result.filter((c) => c.status === 'PTP' && c.ptpDate && c.ptpDate >= todayStr);
     } else if (ptpFilter === 'Broken_PTP') {
-      result = result.filter((c) => (c.status === 'PTP' && (c.dpd || 0) >= 60) || (c.dpd || 0) >= 90);
+      result = result.filter((c) => 
+        c.status === 'Broken_PTP' || (c.ptpDate && c.ptpDate < todayStr && c.status !== 'Paid')
+      );
     } else if (ptpFilter === 'NPA') {
       result = result.filter((c) => (c.dpd || 0) >= 90);
     }
@@ -171,6 +175,7 @@ export const CaseListView: React.FC<CaseListViewProps> = ({
       Visited: 'bg-blue-950 text-blue-400 border-blue-800/60',
       Call_Done: 'bg-indigo-950 text-indigo-400 border-indigo-800/60',
       PTP: 'bg-amber-950 text-amber-400 border-amber-800/60',
+      Broken_PTP: 'bg-rose-950 text-rose-400 border-rose-800/60',
       Paid: 'bg-emerald-950 text-emerald-400 border-emerald-800/60',
       Dispute: 'bg-rose-950 text-rose-400 border-rose-800/60',
       Unreachable: 'bg-purple-950 text-purple-400 border-purple-800/60'

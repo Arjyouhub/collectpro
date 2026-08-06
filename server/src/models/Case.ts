@@ -30,7 +30,7 @@ export interface ICase extends Document {
   coBorrowerName?: string;
   coBorrowerPhone?: string;
   coBorrowerRelation?: string;
-  status: 'Pending' | 'Visited' | 'Call_Done' | 'PTP' | 'Paid' | 'Settlement_Requested' | 'Dispute' | 'Unreachable' | 'Escalated';
+  status: 'Pending' | 'Visited' | 'Call_Done' | 'PTP' | 'Broken_PTP' | 'Paid' | 'Settlement_Requested' | 'Dispute' | 'Unreachable' | 'Escalated';
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   lastActionDate?: Date;
   nextFollowUpDate?: Date;
@@ -82,7 +82,7 @@ const CaseSchema: Schema = new Schema(
     coBorrowerRelation: { type: String, trim: true },
     status: {
       type: String,
-      enum: ['Pending', 'Visited', 'Call_Done', 'PTP', 'Paid', 'Settlement_Requested', 'Dispute', 'Unreachable', 'Escalated'],
+      enum: ['Pending', 'Visited', 'Call_Done', 'PTP', 'Broken_PTP', 'Paid', 'Settlement_Requested', 'Dispute', 'Unreachable', 'Escalated'],
       default: 'Pending',
       index: true
     },

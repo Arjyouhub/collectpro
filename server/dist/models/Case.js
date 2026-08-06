@@ -71,7 +71,7 @@ const CaseSchema = new mongoose_1.Schema({
     coBorrowerRelation: { type: String, trim: true },
     status: {
         type: String,
-        enum: ['Pending', 'Visited', 'Call_Done', 'PTP', 'Paid', 'Settlement_Requested', 'Dispute', 'Unreachable', 'Escalated'],
+        enum: ['Pending', 'Visited', 'Call_Done', 'PTP', 'Broken_PTP', 'Paid', 'Settlement_Requested', 'Dispute', 'Unreachable', 'Escalated'],
         default: 'Pending',
         index: true
     },

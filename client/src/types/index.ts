@@ -34,7 +34,7 @@ export interface CollectionCase {
   coBorrowerName?: string;
   coBorrowerPhone?: string;
   coBorrowerRelation?: string;
-  status: 'Pending' | 'Visited' | 'Call_Done' | 'PTP' | 'Paid' | 'Settlement_Requested' | 'Dispute' | 'Unreachable' | 'Escalated';
+  status: 'Pending' | 'Visited' | 'Call_Done' | 'PTP' | 'Broken_PTP' | 'Paid' | 'Settlement_Requested' | 'Dispute' | 'Unreachable' | 'Escalated';
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   lastActionDate?: string;
   nextFollowUpDate?: string;

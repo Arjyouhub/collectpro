@@ -266,7 +266,15 @@ function MainApp() {
           <FieldMapView cases={cases} onSelectCase={(c) => setSelectedCaseId(c._id)} />
         )}
 
-        {activeTab === 'ai' && <AICopilotModal />}
+        {activeTab === 'ai' && (
+          <AICopilotModal
+            onSelectCase={(id) => {
+              setSelectedCaseId(id);
+              setActiveTab('cases');
+            }}
+            onOpenMap={() => setActiveTab('map')}
+          />
+        )}
 
         {activeTab === 'profile' && (
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 max-w-xl mx-auto">
