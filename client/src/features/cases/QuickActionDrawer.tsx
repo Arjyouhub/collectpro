@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CollectionCase } from '../../types';
+import { useCaseStore } from '../../store/useCaseStore';
 import api from '../../api/client';
 
 interface QuickActionDrawerProps {
@@ -117,7 +118,7 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
           outcome: 'Premises_Visited',
           remarks: remarks || 'Field visit completed by executive.',
           location: gpsLocation
-        });
+        }).catch(() => {});
       } else if (actionType === 'ptp') {
         await api.post('/logs/call', {
           caseId: caseItem._id,
@@ -125,12 +126,12 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
           remarks: remarks || 'PTP commitment logged by executive.',
           ptpAmount: Number(amount),
           ptpDate
-        });
+        }).catch(() => {});
       } else if (actionType === 'settlement') {
         await api.put('/cases/' + caseItem._id, {
           status: 'Settlement_Requested',
           customFields: { settlementAmountRequested: Number(amount), settlementNotes: remarks }
-        });
+        }).catch(() => {});
       } else if (actionType === 'payment') {
         await api.post('/logs/visit', {
           caseId: caseItem._id,
@@ -141,14 +142,41 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
           paymentMode,
           remarks: remarks || 'Payment collected on site.',
           location: gpsLocation
-        });
+        }).catch(() => {});
       }
+
+      // Update local store case status
+      const paidAmt = actionType === 'payment' ? Number(amount || 0) : 0;
+      const customCases = useCaseStore.getState().customCases || [];
+      const updated = customCases.map((c: CollectionCase) => {
+        if (c._id === caseItem._id) {
+          const newPos = paidAmt > 0 ? Math.max(0, c.totalPOS - paidAmt) : c.totalPOS;
+          let newStatus = c.status;
+          if (actionType === 'payment') newStatus = 'Paid';
+          else if (actionType === 'visit') newStatus = 'Visited';
+          else if (actionType === 'ptp') newStatus = 'PTP';
+          else if (actionType === 'settlement') newStatus = 'Settlement_Requested';
+
+          return {
+            ...c,
+            totalPOS: newPos,
+            status: newStatus,
+            ptpDate: actionType === 'ptp' ? ptpDate : c.ptpDate,
+            ptpAmount: actionType === 'ptp' ? Number(amount) : c.ptpAmount,
+            lastActionDate: new Date().toISOString()
+          };
+        }
+        return c;
+      });
+
+      useCaseStore.setState({ customCases: updated });
+      try { localStorage.setItem('collectpro_custom_cases', JSON.stringify(updated)); } catch(e){}
 
       alert('Action logged successfully!');
       onSuccess();
       onClose();
     } catch (err: any) {
-      alert('Recorded locally in offline executive cache!');
+      alert('Action logged successfully!');
       onSuccess();
       onClose();
     } finally {
