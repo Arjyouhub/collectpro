@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Trash2, AlertTriangle, X } from 'lucide-react';
 import { Navbar } from './components/Navbar';
@@ -115,6 +115,54 @@ function MainApp() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  const { search, portfolio, bucket, status, priority, pincode, page, limit, selectedCaseId, setSelectedCaseId, customCases } = useCaseStore();
+
+  // Native Mobile & Browser Back Button Handler - Traps back press & keeps session logged in!
+  useEffect(() => {
+    if (!token) return;
+
+    // Push initial state so browser history stays inside the app
+    window.history.pushState({ app: 'collectpro', tab: activeTab }, '', window.location.href);
+
+    const handlePopState = () => {
+      // 1. If Excel Import Modal is open, close modal only
+      if (isExcelModalOpen) {
+        setIsExcelModalOpen(false);
+        window.history.pushState({ app: 'collectpro', tab: activeTab }, '', window.location.href);
+        return;
+      }
+
+      // 2. If Delete Account modal is open, close modal only
+      if (isDeleteModalOpen) {
+        setIsDeleteModalOpen(false);
+        window.history.pushState({ app: 'collectpro', tab: activeTab }, '', window.location.href);
+        return;
+      }
+
+      // 3. If Case Detail Drawer is open, close drawer only
+      if (selectedCaseId) {
+        setSelectedCaseId(null);
+        window.history.pushState({ app: 'collectpro', tab: activeTab }, '', window.location.href);
+        return;
+      }
+
+      // 4. If on sub-tabs (map, ai, profile), switch back to main cases tab
+      if (activeTab !== 'cases' && activeTab !== 'dashboard') {
+        setActiveTab('cases');
+        window.history.pushState({ app: 'collectpro', tab: 'cases' }, '', window.location.href);
+        return;
+      }
+
+      // 5. If on main tab (cases or dashboard), stay logged in! Re-push history entry.
+      window.history.pushState({ app: 'collectpro', tab: activeTab }, '', window.location.href);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [token, activeTab, selectedCaseId, isExcelModalOpen, isDeleteModalOpen]);
+
   const handleDeleteAccountAndData = async () => {
     try {
       await api.delete('/auth/profile').catch(() => {});
@@ -142,8 +190,6 @@ function MainApp() {
       return next;
     });
   };
-
-  const { search, portfolio, bucket, status, priority, pincode, page, limit, selectedCaseId, setSelectedCaseId, customCases } = useCaseStore();
 
   const isDemoUser = user?.email === 'demo@collectpro.ai' || user?.email === 'executive@collectpro.ai';
 
