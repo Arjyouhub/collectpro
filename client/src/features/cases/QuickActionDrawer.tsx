@@ -28,7 +28,7 @@ interface QuickActionDrawerProps {
 export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, isOpen, onClose, onSuccess }) => {
   if (!isOpen || !caseItem) return null;
 
-  const [actionType, setActionType] = useState<'visit' | 'ptp' | 'broken_ptp' | 'settlement' | 'payment'>('visit');
+  const [actionType, setActionType] = useState<'visit' | 'ptp' | 'settlement' | 'payment'>('visit');
   
   // Fields
   const [personMet, setPersonMet] = useState(caseItem.customerName);
@@ -126,19 +126,6 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
           ptpAmount: Number(amount),
           ptpDate
         });
-      } else if (actionType === 'broken_ptp') {
-        await api.put('/cases/' + caseItem._id, {
-          status: 'Broken_PTP',
-          lastActionDate: new Date()
-        });
-        await api.post('/logs/visit', {
-          caseId: caseItem._id,
-          addressVisited: caseItem.address,
-          personMet,
-          outcome: 'Refused',
-          remarks: remarks || 'PTP commitment broken upon field visit follow-up.',
-          location: gpsLocation
-        });
       } else if (actionType === 'settlement') {
         await api.put('/cases/' + caseItem._id, {
           status: 'Settlement_Requested',
@@ -187,60 +174,49 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
         </div>
 
         {/* Action Type Pills */}
-        <div className="grid grid-cols-5 gap-1.5 text-center text-xs font-bold">
+        <div className="grid grid-cols-4 gap-2 text-center text-xs font-bold">
           <button
             type="button"
             onClick={() => setActionType('visit')}
-            className={`p-2 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
+            className={`p-2.5 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
               actionType === 'visit' ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30' : 'bg-slate-900 text-slate-400 border-slate-800'
             }`}
           >
-            <MapPin className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Visit</span>
+            <MapPin className="w-4 h-4" />
+            <span className="text-[11px]">Visit</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActionType('ptp')}
-            className={`p-2 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
+            className={`p-2.5 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
               actionType === 'ptp' ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/30' : 'bg-slate-900 text-slate-400 border-slate-800'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
-            <span className="text-[10px]">PTP</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActionType('broken_ptp')}
-            className={`p-2 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
-              actionType === 'broken_ptp' ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30' : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
-          >
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Broken</span>
+            <Clock className="w-4 h-4" />
+            <span className="text-[11px]">PTP</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActionType('settlement')}
-            className={`p-2 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
+            className={`p-2.5 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
               actionType === 'settlement' ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 border-slate-800'
             }`}
           >
-            <FileCheck className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Settle</span>
+            <FileCheck className="w-4 h-4" />
+            <span className="text-[11px]">Settlement</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActionType('payment')}
-            className={`p-2 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
+            className={`p-2.5 rounded-xl border transition-all flex flex-col items-center space-y-1 ${
               actionType === 'payment' ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30' : 'bg-slate-900 text-slate-400 border-slate-800'
             }`}
           >
-            <IndianRupee className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Paid</span>
+            <IndianRupee className="w-4 h-4" />
+            <span className="text-[11px]">Payment</span>
           </button>
         </div>
 
