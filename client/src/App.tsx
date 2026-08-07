@@ -202,19 +202,16 @@ function MainApp() {
           params: { search, portfolio, bucket, status, priority, pincode, page, limit }
         });
         if (res.data && Array.isArray(res.data.cases)) {
-          // If user has uploaded cases or custom cases exist, return them!
-          if (res.data.cases.length > 0 || customCases.length > 0 || !isDemoUser) {
-            return {
-              cases: [...res.data.cases, ...customCases],
-              pagination: res.data.pagination || { total: res.data.cases.length + customCases.length, page: 1, limit: 50, totalPages: 1 }
-            };
-          }
+          return {
+            cases: res.data.cases,
+            pagination: res.data.pagination || { total: res.data.cases.length, page: 1, limit: 50, totalPages: 1 }
+          };
         }
       } catch (err) {
         // API offline fallback
       }
 
-      // Only fallback to mockSampleCases if the user is in Instant Demo Mode
+      // Only fallback to mockSampleCases if the user is in Instant Demo Mode AND has no custom cases
       if (isDemoUser && customCases.length === 0) {
         return {
           cases: mockSampleCases,
@@ -224,10 +221,11 @@ function MainApp() {
 
       // New executive login starts clean with 0 dummy cases (empty state)
       return {
-        cases: customCases,
-        pagination: { total: customCases.length, page: 1, limit: 50, totalPages: 1 }
+        cases: [],
+        pagination: { total: 0, page: 1, limit: 50, totalPages: 1 }
       };
     },
+    placeholderData: (previousData) => previousData,
     enabled: !!token
   });
 
@@ -242,6 +240,7 @@ function MainApp() {
         return null;
       }
     },
+    placeholderData: (previousData) => previousData,
     enabled: !!token
   });
 
@@ -249,9 +248,23 @@ function MainApp() {
     return <AuthPage />;
   }
 
-  const rawCases: CollectionCase[] = caseData?.cases || mockSampleCases;
-  const cases: CollectionCase[] = [...(customCases || []), ...(rawCases || [])].filter(Boolean);
-  const totalCasesCount = cases.length;
+  const rawCases: CollectionCase[] = caseData?.cases || [];
+  
+  // Cleanly merge & deduplicate customCases and rawCases by _id/accountNo to prevent 2x duplicate entries
+  const cases: CollectionCase[] = React.useMemo(() => {
+    const combined = [...(customCases || []), ...(rawCases || [])].filter(Boolean);
+    const map = new Map<string, CollectionCase>();
+    for (const item of combined) {
+      if (!item) continue;
+      const key = item._id || item.accountNo || `${item.customerName}-${item.phone}`;
+      if (!map.has(key)) {
+        map.set(key, item);
+      }
+    }
+    return Array.from(map.values());
+  }, [customCases, rawCases]);
+
+  const totalCasesCount = caseData?.pagination?.total || cases.length;
   const selectedCase = cases.find((c) => c && c._id === selectedCaseId) || null;
 
   // Dynamic KPIs calculation for offline / custom imported portfolios

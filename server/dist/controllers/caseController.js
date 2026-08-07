@@ -38,12 +38,13 @@ async function getCases(request, reply) {
             query.totalPOS = { $gte: Number(minPOS), $lte: Number(maxPOS) };
         }
         if (search) {
+            const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
-                { customerName: { $regex: search, $options: 'i' } },
-                { accountNo: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { address: { $regex: search, $options: 'i' } },
-                { pincode: { $regex: search, $options: 'i' } }
+                { customerName: { $regex: escaped, $options: 'i' } },
+                { accountNo: { $regex: escaped, $options: 'i' } },
+                { phone: { $regex: escaped, $options: 'i' } },
+                { address: { $regex: escaped, $options: 'i' } },
+                { pincode: { $regex: escaped, $options: 'i' } }
             ];
         }
         const sortOptions = {};

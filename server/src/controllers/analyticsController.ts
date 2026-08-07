@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import mongoose from 'mongoose';
 import Case from '../models/Case';
 import Payment from '../models/Payment';
 import Portfolio from '../models/Portfolio';
@@ -6,6 +7,7 @@ import Portfolio from '../models/Portfolio';
 export async function getDashboardStats(request: FastifyRequest, reply: FastifyReply) {
   try {
     const userId = (request.user as any).id;
+    const userObjectId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
 
     const [
       totalCases,
@@ -14,29 +16,29 @@ export async function getDashboardStats(request: FastifyRequest, reply: FastifyR
       portfolioList,
       bucketAgg,
       statusAgg,
-      paymentsAgg
+      paymentsAgg,
+      totalPOSAgg
     ] = await Promise.all([
       Case.countDocuments({ user: userId }),
       Case.countDocuments({ user: userId, status: 'PTP' }),
       Case.countDocuments({ user: userId, status: 'Paid' }),
       Portfolio.find({ user: userId }).lean(),
       Case.aggregate([
-        { $match: { user: (request.user as any).id } },
+        { $match: { user: userObjectId } },
         { $group: { _id: '$bucket', count: { $sum: 1 }, totalPOS: { $sum: '$totalPOS' } } }
       ]),
       Case.aggregate([
-        { $match: { user: (request.user as any).id } },
+        { $match: { user: userObjectId } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
       Payment.aggregate([
-        { $match: { user: (request.user as any).id, status: 'Success' } },
+        { $match: { user: userObjectId, status: 'Success' } },
         { $group: { _id: null, totalCollected: { $sum: '$amount' } } }
+      ]),
+      Case.aggregate([
+        { $match: { user: userObjectId } },
+        { $group: { _id: null, totalPOS: { $sum: '$totalPOS' } } }
       ])
-    ]);
-
-    const totalPOSAgg = await Case.aggregate([
-      { $match: { user: (request.user as any).id } },
-      { $group: { _id: null, totalPOS: { $sum: '$totalPOS' } } }
     ]);
 
     const totalPOS = totalPOSAgg[0]?.totalPOS || 0;

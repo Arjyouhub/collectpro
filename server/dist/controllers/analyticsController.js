@@ -4,33 +4,35 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDashboardStats = getDashboardStats;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Case_1 = __importDefault(require("../models/Case"));
 const Payment_1 = __importDefault(require("../models/Payment"));
 const Portfolio_1 = __importDefault(require("../models/Portfolio"));
 async function getDashboardStats(request, reply) {
     try {
         const userId = request.user.id;
-        const [totalCases, ptpCasesCount, paidCasesCount, portfolioList, bucketAgg, statusAgg, paymentsAgg] = await Promise.all([
+        const userObjectId = mongoose_1.default.Types.ObjectId.isValid(userId) ? new mongoose_1.default.Types.ObjectId(userId) : userId;
+        const [totalCases, ptpCasesCount, paidCasesCount, portfolioList, bucketAgg, statusAgg, paymentsAgg, totalPOSAgg] = await Promise.all([
             Case_1.default.countDocuments({ user: userId }),
             Case_1.default.countDocuments({ user: userId, status: 'PTP' }),
             Case_1.default.countDocuments({ user: userId, status: 'Paid' }),
             Portfolio_1.default.find({ user: userId }).lean(),
             Case_1.default.aggregate([
-                { $match: { user: request.user.id } },
+                { $match: { user: userObjectId } },
                 { $group: { _id: '$bucket', count: { $sum: 1 }, totalPOS: { $sum: '$totalPOS' } } }
             ]),
             Case_1.default.aggregate([
-                { $match: { user: request.user.id } },
+                { $match: { user: userObjectId } },
                 { $group: { _id: '$status', count: { $sum: 1 } } }
             ]),
             Payment_1.default.aggregate([
-                { $match: { user: request.user.id, status: 'Success' } },
+                { $match: { user: userObjectId, status: 'Success' } },
                 { $group: { _id: null, totalCollected: { $sum: '$amount' } } }
+            ]),
+            Case_1.default.aggregate([
+                { $match: { user: userObjectId } },
+                { $group: { _id: null, totalPOS: { $sum: '$totalPOS' } } }
             ])
-        ]);
-        const totalPOSAgg = await Case_1.default.aggregate([
-            { $match: { user: request.user.id } },
-            { $group: { _id: null, totalPOS: { $sum: '$totalPOS' } } }
         ]);
         const totalPOS = totalPOSAgg[0]?.totalPOS || 0;
         const totalCollected = paymentsAgg[0]?.totalCollected || 0;

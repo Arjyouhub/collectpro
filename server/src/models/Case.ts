@@ -109,6 +109,8 @@ CaseSchema.index({ user: 1, accountNo: 1 }, { unique: true });
 CaseSchema.index({ user: 1, portfolioName: 1, status: 1 });
 CaseSchema.index({ user: 1, bucket: 1, totalPOS: -1 });
 CaseSchema.index({ user: 1, pincode: 1 });
+CaseSchema.index({ user: 1, updatedAt: -1 });
+CaseSchema.index({ user: 1, priority: 1 });
 CaseSchema.index({ customerName: 'text', accountNo: 'text', phone: 'text', address: 'text' });
 CaseSchema.index({ location: '2dsphere' });
 
