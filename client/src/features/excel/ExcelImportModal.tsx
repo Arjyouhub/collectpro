@@ -20,8 +20,6 @@ export interface ImportSummaryData {
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  if (!isOpen) return null;
-
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<any[]>([]);
@@ -46,6 +44,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<ImportSummaryData | null>(null);
+
+  if (!isOpen) return null;
 
   /**
    * Header Auto-Mapper matching user rules:

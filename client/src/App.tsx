@@ -244,10 +244,6 @@ function MainApp() {
     enabled: !!token
   });
 
-  if (!token) {
-    return <AuthPage />;
-  }
-
   const rawCases: CollectionCase[] = caseData?.cases || [];
   
   // Cleanly merge & deduplicate customCases and rawCases by _id/accountNo to prevent 2x duplicate entries
@@ -263,6 +259,10 @@ function MainApp() {
     }
     return Array.from(map.values());
   }, [customCases, rawCases]);
+
+  if (!token) {
+    return <AuthPage />;
+  }
 
   const totalCasesCount = caseData?.pagination?.total || cases.length;
   const selectedCase = cases.find((c) => c && c._id === selectedCaseId) || null;

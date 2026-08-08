@@ -28,14 +28,12 @@ interface QuickActionDrawerProps {
 }
 
 export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, isOpen, onClose, onSuccess }) => {
-  if (!isOpen || !caseItem) return null;
-
   const [actionType, setActionType] = useState<'visit' | 'ptp' | 'settlement' | 'payment'>('visit');
   
   // Fields
-  const [personMet, setPersonMet] = useState(caseItem.customerName);
+  const [personMet, setPersonMet] = useState(caseItem?.customerName || '');
   const [remarks, setRemarks] = useState('');
-  const [amount, setAmount] = useState(caseItem.totalPOS.toString());
+  const [amount, setAmount] = useState(caseItem?.totalPOS?.toString() || '0');
   const [ptpDate, setPtpDate] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -52,6 +50,7 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
 
   // Automatically fetch GPS when opening drawer
   useEffect(() => {
+    if (!isOpen || !caseItem) return;
     if (navigator.geolocation) {
       setGpsLoading(true);
       navigator.geolocation.getCurrentPosition(
@@ -62,7 +61,9 @@ export const QuickActionDrawer: React.FC<QuickActionDrawerProps> = ({ caseItem, 
         () => setGpsLoading(false)
       );
     }
-  }, []);
+  }, [isOpen, caseItem]);
+
+  if (!isOpen || !caseItem) return null;
 
   // Web Speech API Voice Dictation
   const toggleVoiceInput = () => {

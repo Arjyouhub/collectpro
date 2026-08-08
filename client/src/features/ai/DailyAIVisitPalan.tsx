@@ -35,16 +35,73 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
   onOpenMap
 }) => {
   const [dailyCapacity, setDailyCapacity] = useState<number>(10);
-  const [focusFilter, setFocusFilter] = useState<'ALL' | 'PTP' | 'CRITICAL' | 'HIGH_POS'>('ALL');
+  const [focusFilter, setFocusFilter] = useState<'ALL' | 'PENDING' | 'PTP' | 'CRITICAL' | 'HIGH_POS'>('PENDING');
+  const [sortBy, setSortBy] = useState<'LOCATION' | 'PRIORITY'>('LOCATION');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [languageMode, setLanguageMode] = useState<'TA' | 'EN'>('TA'); // Tamil or English AI insights
+
+  // Total Pending Visits Count
+  const pendingCasesCount = useMemo(() => {
+    return cases.filter(c => c.status === 'Pending' || c.status !== 'Paid').length;
+  }, [cases]);
+
+  // Target Completion Deadline State (Default: 5 days from today)
+  const defaultTargetDateStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 5);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const [targetDeadlineDate, setTargetDeadlineDate] = useState<string>(defaultTargetDateStr);
+  const [selectedDayTab, setSelectedDayTab] = useState<number | null>(null);
+
+  // Days remaining calculation
+  const daysRemaining = useMemo(() => {
+    if (!targetDeadlineDate) return 5;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(targetDeadlineDate);
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  }, [targetDeadlineDate]);
+
+  // Target Daily Capacity needed to complete all pending visits before deadline
+  const targetRequiredDailyCapacity = useMemo(() => {
+    return Math.max(1, Math.ceil(pendingCasesCount / Math.max(1, daysRemaining)));
+  }, [pendingCasesCount, daysRemaining]);
+
+  // Multi-day Route Plan computed for target completion date
+  const targetMultiDayPlan = useMemo(() => {
+    const pendingCases = cases.filter(c => c.status === 'Pending' || c.status !== 'Paid');
+    return AIPriorityEngine.generateMultiDayPlan(pendingCases, targetRequiredDailyCapacity);
+  }, [cases, targetRequiredDailyCapacity]);
+
+  // Total Days Needed for complete pending portfolio
+  const totalDaysNeeded = Math.max(1, Math.ceil(pendingCasesCount / Math.max(1, dailyCapacity)));
+
+  // Calculate distance in KM from reference origin (Kozhikode / GPS center)
+  const calculateDistanceKm = (c: CollectionCase, refLat = 11.2588, refLng = 75.7804) => {
+    const lat = c.location?.coordinates?.[1] || 11.2588;
+    const lng = c.location?.coordinates?.[0] || 75.7804;
+    const R = 6371;
+    const dLat = ((lat - refLat) * Math.PI) / 180;
+    const dLon = ((lng - refLng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((refLat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const cVal = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return parseFloat((R * cVal).toFixed(1));
+  };
 
   // Filter cases based on executive choices
   const filteredCases = useMemo(() => {
     let result = [...cases];
 
-    if (focusFilter === 'PTP') {
+    if (focusFilter === 'PENDING') {
+      result = result.filter(c => c.status === 'Pending' || c.status !== 'Paid');
+    } else if (focusFilter === 'PTP') {
       result = result.filter(c => c.status === 'PTP' || c.ptpDate);
     } else if (focusFilter === 'CRITICAL') {
       result = result.filter(c => (c.dpd || 0) >= 60 || c.bucket === '61-90 DPD' || c.bucket === '90+ DPD (NPA)');
@@ -62,20 +119,26 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
       );
     }
 
-    // Sort by AI Priority Score descending
+    // Sort by Location Proximity (Nearest first) OR AI Priority Score
     return result.sort((a, b) => {
+      if (sortBy === 'LOCATION') {
+        return calculateDistanceKm(a) - calculateDistanceKm(b);
+      }
       const scoreA = AIPriorityEngine.calculatePriorityScore(a).score;
       const scoreB = AIPriorityEngine.calculatePriorityScore(b).score;
       return scoreB - scoreA;
     });
-  }, [cases, focusFilter, searchTerm]);
+  }, [cases, focusFilter, sortBy, searchTerm]);
 
-  // Selected Daily Itinerary (up to capacity)
+  // Selected Daily Itinerary (up to capacity or selected day tab)
   const todayVisits = useMemo(() => {
-    return filteredCases.slice(0, dailyCapacity);
-  }, [filteredCases, dailyCapacity]);
+    if (selectedDayTab !== null && targetMultiDayPlan.dayPlans[selectedDayTab - 1]) {
+      return targetMultiDayPlan.dayPlans[selectedDayTab - 1].cases;
+    }
+    return filteredCases.slice(0, Math.max(dailyCapacity, targetRequiredDailyCapacity));
+  }, [filteredCases, dailyCapacity, targetRequiredDailyCapacity, selectedDayTab, targetMultiDayPlan]);
 
-  // Metrics & Data Yield (பலன்) Calculations
+  // Metrics & Data Yield Calculations
   const yieldMetrics = useMemo(() => {
     const totalPOSInSchedule = todayVisits.reduce((sum, c) => sum + (c.totalPOS || 0), 0);
     
@@ -111,10 +174,8 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
   };
 
   const handleWhatsAppSend = (phone: string, customerName: string, amount: number, address: string) => {
-    const cleanPhone = phone.replace(/[^0.9]/g, '') || '919876543210';
-    const msg = languageMode === 'TA'
-      ? `வணக்கம் ${customerName}, CollectPro AI களப் பிரிவு அறிவிப்பு. உங்கள் கணக்கு நிலுவை ₹${amount.toLocaleString('en-IN')}-க்கான நேரடி விசிட் இன்று திட்டமிடப்பட்டுள்ளது. முகவரி: ${address}. உடனடி தீர்வு பெற தொடர்பு கொள்ளவும்.`
-      : `Dear ${customerName}, CollectPro Field Operations Alert. A direct field visit is scheduled for your overdue balance of ₹${amount.toLocaleString('en-IN')} today at ${address}. Please reply for instant settlement receipt.`;
+    const cleanPhone = phone.replace(/[^0-9]/g, '') || '919876543210';
+    const msg = `Dear ${customerName}, CollectPro Field Operations Alert. A direct field visit is scheduled for your overdue balance of ₹${amount.toLocaleString('en-IN')} today at ${address}. Please reply for instant settlement receipt.`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -144,29 +205,18 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
           <div>
             <div className="flex items-center space-x-2 text-cyan-400 font-bold text-xs uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-              <span>Daily AI Visit & Data Yield Engine</span>
-              <span className="bg-cyan-950 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full border border-cyan-800 font-mono">
-                தினசரி விசிட் & டேட்டா பலன்
-              </span>
+              <span>Daily AI Visit & Recovery Yield Engine</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
               Today's AI Visit Route & Recovery Yield Plan
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-              AI algorithms analyze DPD urgency, POS volume, customer location, and past response logs to maximize today's field collection outcome (வசூல் பலன்).
+              AI algorithms analyze DPD urgency, POS volume, customer location, and past response logs to maximize today's field collection outcome.
             </p>
           </div>
 
-          {/* Language Toggle & Actions */}
+          {/* Actions */}
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setLanguageMode(prev => prev === 'TA' ? 'EN' : 'TA')}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-cyan-500/40 text-xs font-bold text-cyan-300 hover:bg-slate-800 transition-all flex items-center space-x-1.5 shadow-md"
-            >
-              <Zap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{languageMode === 'TA' ? '🇮🇳 தமிழ் AI' : '🌐 English AI'}</span>
-            </button>
-
             {onOpenMap && (
               <button
                 onClick={onOpenMap}
@@ -179,13 +229,13 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
           </div>
         </div>
 
-        {/* 4 Yield Summary KPI Cards (டேட்டா பலன் அட்டவணை) */}
+        {/* 4 Yield Summary KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-5">
           
-          {/* KPI 1: Estimated Recovery Yield (வசூல் பலன்) */}
+          {/* KPI 1: Estimated Recovery Yield */}
           <div className="bg-slate-950/80 p-4 rounded-2xl border border-emerald-500/30 space-y-1 shadow-lg">
             <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
-              <span className="uppercase tracking-wider">Estimated Yield (வசூல் பலன்)</span>
+              <span className="uppercase tracking-wider">Estimated Recovery Yield</span>
               <TrendingUp className="w-4 h-4" />
             </div>
             <div className="text-2xl font-black text-emerald-400">
@@ -199,7 +249,7 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
           {/* KPI 2: Today's AI Priority Schedule */}
           <div className="bg-slate-950/80 p-4 rounded-2xl border border-cyan-500/30 space-y-1 shadow-lg">
             <div className="flex items-center justify-between text-[11px] font-bold text-cyan-400">
-              <span className="uppercase tracking-wider">Today's Visits (திட்டமிடல்)</span>
+              <span className="uppercase tracking-wider">Today's Visits Schedule</span>
               <Target className="w-4 h-4" />
             </div>
             <div className="text-2xl font-black text-white">
@@ -241,6 +291,152 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
         </div>
       </div>
 
+      {/* Target Completion Deadline AI Planner Card */}
+      <div className="glass-panel p-5 rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950/40 shadow-2xl space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-extrabold text-white">
+                Target Completion Deadline Visit Planner
+              </h2>
+              <p className="text-xs text-slate-400">
+                Set deadline date to automatically compute daily visit pace & multi-day route schedule before target date.
+              </p>
+            </div>
+          </div>
+
+          {/* Date Picker Input & Presets */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-cyan-500/40 text-xs font-bold text-white">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Deadline:</span>
+              <input
+                type="date"
+                value={targetDeadlineDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setTargetDeadlineDate(e.target.value);
+                  setSelectedDayTab(null);
+                }}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 3);
+                  setTargetDeadlineDate(d.toISOString().split('T')[0]);
+                  setSelectedDayTab(null);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-bold text-cyan-300 transition-all"
+              >
+                ⚡ 3-Day Sprint
+              </button>
+              <button
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 5);
+                  setTargetDeadlineDate(d.toISOString().split('T')[0]);
+                  setSelectedDayTab(null);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-bold text-cyan-300 transition-all"
+              >
+                📅 5-Day Pace
+              </button>
+              <button
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 7);
+                  setTargetDeadlineDate(d.toISOString().split('T')[0]);
+                  setSelectedDayTab(null);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-bold text-cyan-300 transition-all"
+              >
+                🏁 7-Day Target
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Deadline Velocity Metrics Summary Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400">Target Timeframe</span>
+              <p className="text-sm font-black text-cyan-400">{daysRemaining} Days Available</p>
+            </div>
+            <Clock className="w-5 h-5 text-cyan-400/60" />
+          </div>
+
+          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400">Required Daily Pace</span>
+              <p className="text-sm font-black text-emerald-400">{targetRequiredDailyCapacity} Visits / Day</p>
+            </div>
+            <Zap className="w-5 h-5 text-emerald-400/60" />
+          </div>
+
+          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400">100% Pending Clearance</span>
+              <p className="text-sm font-black text-teal-400">{pendingCasesCount} Visits Scheduled</p>
+            </div>
+            <ShieldCheck className="w-5 h-5 text-teal-400/60" />
+          </div>
+        </div>
+
+        {/* Day-Wise Route Selection Tabs */}
+        {targetMultiDayPlan.dayPlans && targetMultiDayPlan.dayPlans.length > 0 && (
+          <div className="pt-2 border-t border-slate-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                Automated Route Schedule by Day (Select day tab to view itinerary)
+              </div>
+              {selectedDayTab !== null && (
+                <span className="text-xs font-bold text-cyan-400">
+                  Viewing Day {selectedDayTab} Schedule ({targetMultiDayPlan.dayPlans[selectedDayTab - 1]?.totalCases || 0} Visits)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setSelectedDayTab(null)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  selectedDayTab === null
+                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                    : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                }`}
+              >
+                All Combined ({todayVisits.length})
+              </button>
+
+              {targetMultiDayPlan.dayPlans.map((dp) => (
+                <button
+                  key={dp.dayNumber}
+                  onClick={() => setSelectedDayTab(dp.dayNumber)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+                    selectedDayTab === dp.dayNumber
+                      ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                      : 'bg-slate-950 text-slate-300 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <span>Day {dp.dayNumber}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-900 text-cyan-300 border border-slate-700">
+                    {dp.totalCases} Stops
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Control & Filter Controls Bar */}
       <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-lg">
         
@@ -263,6 +459,17 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
         {/* Focus Filter Pills */}
         <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           <button
+            onClick={() => setFocusFilter('PENDING')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              focusFilter === 'PENDING'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            🎯 Pending Visits ({pendingCasesCount})
+          </button>
+
+          <button
             onClick={() => setFocusFilter('ALL')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               focusFilter === 'ALL'
@@ -270,7 +477,7 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
                 : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
-            All Cases ({cases.length})
+            All Portfolio ({cases.length})
           </button>
 
           <button
@@ -320,12 +527,48 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
 
       </div>
 
+      {/* Location Proximity Sort & Automation Banner */}
+      <div className="glass-panel p-4 rounded-2xl border border-cyan-500/20 bg-slate-900/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center space-x-2 text-xs font-bold text-slate-200">
+          <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span>
+            Location Automation: Total <strong className="text-cyan-400">{pendingCasesCount}</strong> Pending Visits scheduled into <strong className="text-teal-400">{totalDaysNeeded} Days</strong> ({dailyCapacity} visits/day cluster).
+          </span>
+        </div>
+
+        {/* Sort Switcher */}
+        <div className="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+          <button
+            onClick={() => setSortBy('LOCATION')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
+              sortBy === 'LOCATION'
+                ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            <span>📍 Nearest First</span>
+          </button>
+          <button
+            onClick={() => setSortBy('PRIORITY')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
+              sortBy === 'PRIORITY'
+                ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>⭐ AI Priority</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Daily AI Visit Schedule List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-bold text-white flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-cyan-400" />
-            <span>AI Optimized Daily Itinerary (தினசரி விசிட் வரிசை)</span>
+            <span>AI Optimized Daily Itinerary</span>
           </h2>
           <span className="text-xs text-slate-400">
             Showing <strong className="text-white">{todayVisits.length}</strong> of {filteredCases.length} prioritized cases
@@ -347,18 +590,13 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
               const slotTime = timeSlots[idx % timeSlots.length];
               const expectedCaseYield = Math.round((item.totalPOS || 0) * (priorityInfo.recoveryChancePct / 100) * 0.45);
 
-              // Tamil vs English AI Insights
-              const aiTamilInsight = item.status === 'PTP'
-                ? `1. வாடிக்கையாளர் PTP உறுதியளித்துள்ளார் (₹${(item.ptpAmount || item.totalPOS).toLocaleString('en-IN')}). 2. காலை நேர விசிட் சிறந்தது. 3. டிஜிட்டல் ரசீதை உடனடியாக வழங்கவும்.`
+              const aiEnglishInsight = item.aiSummary || (item.status === 'PTP'
+                ? `1. Customer committed PTP (₹${(item.ptpAmount || item.totalPOS).toLocaleString('en-IN')}). 2. Morning visit recommended. 3. Issue digital payment receipt.`
                 : (item.dpd || 0) >= 90
-                ? `1. NPA கணக்கு (${item.dpd} நாட்கள் தாமதம்). 2. அபராத தொகையில் 50% தள்ளுபடி வழங்கி உடனடி டோக்கன் தொகையை கோருங்கள்.`
-                : `1. வழக்கமான நேரில் சந்திப்பு பரிந்துரைக்கப்படுகிறது. 2. நிலுவைத் தொகை ₹${(item.totalPOS || 0).toLocaleString('en-IN')}. 3. மாலை 4 மணிக்கு முன் அணுகவும்.`;
+                ? `1. NPA account (${item.dpd} DPD). 2. Offer 50% penalty waiver on token settlement.`
+                : `1. Regular field visit recommended. 2. Balance ₹${(item.totalPOS || 0).toLocaleString('en-IN')}. 3. Visit before 4 PM.`);
 
-              const aiEnglishInsight = item.aiSummary || `1. Overdue balance ₹${(item.totalPOS || 0).toLocaleString('en-IN')}. 2. High contact likelihood during slot ${slotTime}. 3. Present settlement token option.`;
-
-              const talkTrack = languageMode === 'TA'
-                ? `வணக்கம் ${item.customerName}, CollectPro சார்பாக பேசுகிறேன். உங்கள் கணக்கில் ₹${(item.totalPOS || 0).toLocaleString('en-IN')} நிலுவையில் உள்ளது. இன்று எங்கள் நேரில் கள சந்திப்பின் மூலம் சிறப்பு தள்ளுபடி சலுகை பெறலாம்.`
-                : `Hello ${item.customerName}, I am visiting from CollectPro desk regarding account ${item.accountNo}. We can offer instant penalty waiver on digital settlement today.`;
+              const talkTrack = `Hello ${item.customerName}, I am visiting from CollectPro desk regarding account ${item.accountNo}. We can offer instant penalty waiver on digital settlement today.`;
 
               return (
                 <div 
@@ -399,6 +637,11 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
                           <span>{item.accountNo}</span>
                           <span>•</span>
                           <span className="text-slate-300 font-medium">{item.portfolioName || 'General Portfolio'}</span>
+                          <span>•</span>
+                          <span className="text-cyan-400 font-bold bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-800/80 flex items-center space-x-1">
+                            <MapPin className="w-3 h-3 text-cyan-400" />
+                            <span>{calculateDistanceKm(item)} km away</span>
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -457,7 +700,7 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
                     <div className="flex items-center justify-between text-xs font-bold text-cyan-400">
                       <div className="flex items-center space-x-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>AI Visit Outcome & Talk Track (விசிட் பலன் ஆலோசனை)</span>
+                        <span>AI Visit Outcome & Strategy</span>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-mono">
                         Recovery Chance: {priorityInfo.recoveryChancePct}%
@@ -465,7 +708,7 @@ export const DailyAIVisitPalan: React.FC<DailyAIVisitPalanProps> = ({
                     </div>
 
                     <p className="text-xs text-slate-200 leading-relaxed font-sans">
-                      {languageMode === 'TA' ? aiTamilInsight : aiEnglishInsight}
+                      {aiEnglishInsight}
                     </p>
                   </div>
 

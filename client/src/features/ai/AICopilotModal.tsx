@@ -112,7 +112,7 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({ onSelectCase, on
           }`}
         >
           <Calendar className="w-4 h-4 text-cyan-300" />
-          <span>Daily AI Visit & Data Yield (விசிட் & டேட்டா பலன்)</span>
+          <span>Daily AI Visit & Recovery Yield Plan</span>
         </button>
 
         <button

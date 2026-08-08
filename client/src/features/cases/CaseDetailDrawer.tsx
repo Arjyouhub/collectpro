@@ -33,8 +33,6 @@ interface CaseDetailDrawerProps {
 }
 
 export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, onClose, onRefresh }) => {
-  if (!caseItem) return null;
-
   const [activeTab, setActiveTab] = useState<'ai' | 'call' | 'visit' | 'receipt' | 'history'>('ai');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
@@ -42,11 +40,11 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
   const [callType, setCallType] = useState<'Outgoing' | 'Incoming'>('Outgoing');
   const [callOutcome, setCallOutcome] = useState('PTP');
   const [callRemarks, setCallRemarks] = useState('');
-  const [ptpAmount, setPtpAmount] = useState(caseItem.totalPOS.toString());
+  const [ptpAmount, setPtpAmount] = useState(caseItem?.totalPOS?.toString() || '0');
   const [ptpDate, setPtpDate] = useState('');
 
   // Visit Log form state
-  const [personMet, setPersonMet] = useState(caseItem.customerName);
+  const [personMet, setPersonMet] = useState(caseItem?.customerName || '');
   const [visitOutcome, setVisitOutcome] = useState('Paid_Digital');
   const [visitPayment, setVisitPayment] = useState('');
   const [visitMode, setVisitMode] = useState('UPI');
@@ -55,13 +53,15 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseItem, on
   // AI Script generator state
   const [selectedObjection, setSelectedObjection] = useState('Job Loss');
   const [aiScript, setAiScript] = useState(
-    caseItem.aiRecommendation ||
-      `Mr./Ms. ${caseItem.customerName}, resolving this ₹${caseItem.totalPOS.toLocaleString('en-IN')} balance today ensures your account stays clear of formal NPA reporting.`
+    caseItem?.aiRecommendation ||
+      `Mr./Ms. ${caseItem?.customerName || ''}, resolving this ₹${caseItem?.totalPOS?.toLocaleString('en-IN') || 0} balance today ensures your account stays clear of formal NPA reporting.`
   );
   const [aiLoading, setAiLoading] = useState(false);
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successTitle, setSuccessTitle] = useState('Action Saved!');
+
+  if (!caseItem) return null;
 
   // Submitting Call Log
   const handleSaveCallLog = async (e: React.FormEvent) => {

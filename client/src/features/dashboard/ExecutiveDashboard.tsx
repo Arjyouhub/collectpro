@@ -68,7 +68,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         {/* 3-Column AI Intelligence Widgets */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           
-          {/* Widget 1: Daily AI Visit & Data Yield (விசிட் & டேட்டா பலன்) */}
+          {/* Widget 1: Daily AI Visit & Data Yield */}
           <div
             onClick={() => onNavigateTab('ai')}
             className="glass-card p-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/20 cursor-pointer hover:border-cyan-400 space-y-1 transition-all shadow-md group"
@@ -76,7 +76,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5 text-cyan-400 font-bold text-[11px]">
                 <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                <span>AI Visit Yield (டேட்டா பலன்)</span>
+                <span>AI Visit Yield</span>
               </div>
               <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded-full border border-emerald-800">
                 +₹1.85L Yield
